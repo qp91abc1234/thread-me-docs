@@ -104,31 +104,74 @@ model Post {
 ```
 
 ### 2.3 m:n (多对多)
-Prisma 支持**隐式多对多**（自动维护中间表），但在复杂业务中，推荐使用**显式中间表**以便在关系中存储额外属性（如：创建时间）。
+
+Prisma 支持两种多对多关系实现方式：**隐式多对多**和**显式多对多**。
+
+#### 2.3.1 隐式多对多（Implicit Many-to-Many）
+
+Prisma 会自动创建并维护中间表，无需手动定义。外键约束默认为 `CASCADE`（级联删除）。
+
+**适用场景**：
+- 中间表不需要额外字段（如创建时间、备注等）
+- 关系结构简单，无需自定义中间表逻辑
 
 ```prisma
 model Post {
-  id   Int       @id @default(autoincrement())
-  tags PostTag[]
+  id   Int   @id @default(autoincrement())
+  tags Tag[] // 多对多关系：一篇文章可以有多个标签
 }
 
 model Tag {
-  id    Int       @id @default(autoincrement())
-  posts PostTag[]
-}
-
-// 显式中间表 (Explicit Relation Table)
-// 只要定义了这个中间模型 (PostTag)，就是显式多对多；
-// 若不定义此模型，仅在 Post/Tag 中互相引用数组，就是隐式多对多（自动维护中间表）。
-model PostTag {
-  postId Int
-  tagId  Int
-  post   Post @relation(fields: [postId], references: [id])
-  tag    Tag  @relation(fields: [tagId], references: [id])
-
-  @@id([postId, tagId]) // 复合主键
+  id    Int    @id @default(autoincrement())
+  posts Post[] // 多对多关系：一个标签可以关联多篇文章
 }
 ```
+
+**说明**：
+- Prisma 会自动创建 `_PostToTag` 中间表（命名规则：`_Model1ToModel2`）
+- 中间表包含 `A` 和 `B` 两个外键字段
+- 关联查询时使用 `include: { tags: true }` 或 `select: { tags: true }`，返回的是目标对象数组（如 `Tag[]`），无需手动处理中间表
+
+#### 2.3.2 显式多对多（Explicit Many-to-Many）
+
+手动定义中间表模型，可以添加额外字段和业务逻辑。
+
+**适用场景**：
+- 需要在中间表存储额外信息（如关联创建时间、关联状态等）
+- 需要对中间表进行查询、更新等操作
+- 需要自定义中间表的索引、约束等
+
+```prisma
+model Post {
+  id      Int       @id @default(autoincrement())
+  postTags PostTag[] // 指向中间表，返回 PostTag[] 对象数组
+}
+
+model Tag {
+  id      Int       @id @default(autoincrement())
+  postTags PostTag[] // 指向中间表，返回 PostTag[] 对象数组
+}
+
+// 显式中间表（Explicit Relation Table）
+model PostTag {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  tagId     Int
+  createdAt DateTime @default(now()) // 额外字段：记录关联创建时间
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tagId]) // 防止重复关联
+  @@index([postId])
+  @@index([tagId])
+}
+```
+
+**说明**：
+- 中间表是一个独立的模型，可以添加任意字段
+- 查询时 `post.postTags` 返回的是 `PostTag[]`，要获取 `Tag[]` 需使用嵌套查询：`include: { postTags: { include: { tag: true } } }`
+- 建议使用 `@@unique` 约束防止重复关联
+- 建议添加索引优化查询性能
 
 ---
 
