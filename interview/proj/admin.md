@@ -23,10 +23,15 @@ use-context：类型安全的上下文钩子
     基于 provide/inject 实现
     实现页面/组件级别的全局数据
     页面/组件销毁后，数据一并销毁
+use-async-watch: 异步 watch 解决竞态问题
+    AbortController：通过它停止过期的请求
+    requestId：通过它丢弃过期的响应
 request：支持 token 续签的 axios 请求库封装
-    缓存失败请求
-    续签结束后再对缓存的 promise 进行 resolve/reject
+    token 过期，不返回响应，返回新建的 promise
+    缓存 promise 中的 resolve & reject
+    续签结束后再对缓存的 promise 进行 `resolve(instance(config!)` / `reject(error)`
 mitt：组件内自动清理监听器的事件总线
+    通过 getCurrentScope 判断是否组件环境调用 useEventBus
     若组件环境调用 useEventBus
     注册 onScopeDispose 钩子
     组件销毁时清理注册的事件钩子
