@@ -145,6 +145,6 @@ const url = new URL('@/assets/icon.png', import.meta.url).href
 ```ts
 const url = new URL('/logo.png', import.meta.url).href
 
-// ❌ 不会转换，直接请求 public/ 目录
-// 始终输出：'/logo.png'（请求 public/logo.png）
+// ❌ 不参与转换
+// new URL 仅做 URL 解析（路径拼接），结果为同源绝对路径：'/logo.png'
 ```
