@@ -1,13 +1,13 @@
 ## vite 插件
 
 ### html 转换插件
-该插件用于在开发时通过 EJS 模板渲染 HTML 并注入数据/标签，在构建时压缩 HTML 以减小体积
-html 转换：开发/构建时在 transformIndexHtml 钩子中，通过 ejs 模板渲染对 html 进行数据/标签注入
+该插件通过 EJS 模板渲染注入数据/标签，通过 html 压缩库对 html 进行压缩
+模板渲染：开发/构建时在 transformIndexHtml 钩子中，通过 ejs 模板渲染对 html 进行数据/标签注入
 html 压缩：构建时在 generateBundle 钩子中，通过 html-minifier-terser 库对 html 内容进行压缩
 
 ### 图片压缩插件
 该插件用于在构建时自动压缩图片资源
-图片压缩：构建时在 generateBundle 钩子中，通过 sharp 库以及配置的压缩参数对图片进行压缩
+图片压缩：构建时在 generateBundle 钩子中找到图片 asset，通过 sharp 库以及配置的压缩参数对图片进行压缩
 
 ### 图片上传插件
 该插件用于在构建时自动将图片资源上传到外部存储，并替换代码中的图片引用为上传后的 URL
@@ -18,7 +18,6 @@ html 压缩：构建时在 generateBundle 钩子中，通过 html-minifier-terse
     删除 bundle 中的图片资源
 
 ## 工具封装
-use-countdown：基于 requestAnimationFrame 实现的倒计时钩子
 use-context：类型安全的上下文钩子
     基于 provide/inject 实现
     实现页面/组件级别的全局数据
