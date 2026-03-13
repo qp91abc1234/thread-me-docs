@@ -119,11 +119,48 @@ const name = 'logo'
 
 ---
 
+#### 4. 非「内置标签 + 已配置标签」的资源属性不会转换
+
+在模板中，Vite / Vue 编译器只会对「**内置标签 + transformAssetUrls 中声明的标签**」的静态资源属性做路径转换：
+
+- ✅ 会转换示例：
+  - `<img src="./logo.png" />`
+  - `<img src="@/assets/logo.png" />`
+  - `<image src="@/assets/logo.png" />`（在 uni-app 中，`<image>` 属于内置标签）
+- ❌ 不会转换示例（自定义组件 + 未声明）：
+
+  ```vue
+  <!-- 未在 transformAssetUrls.tags 中声明 my-img -->
+  <my-img src="./logo.png" />
+  <my-img src="@/assets/logo.png" />
+  ```
+
+  上面 `src` 在编译阶段会被当作普通字符串，**不会参与静态资源路径转换**，运行时收到的仍是 `'./logo.png'` 或 `'@/assets/logo.png'`。
+
+如果需要让自定义组件的 `src` 等属性也参与转换，应该在 Vite 或对应插件（如 `@dcloudio/vite-plugin-uni`）中配置：
+
+```ts
+// 片段示例
+transformAssetUrls: {
+  tags: {
+    'my-img': ['src'],
+    'wd-img': ['src'],
+    'zc-img': ['src'],
+  },
+}
+```
+
 ## 三、new URL 的使用
 
 `new URL(path, base)` 是 **ESM 标准 API**，用于 URL 解析（URL Resolution）。
 
 **在 Vite 中的转换规则：**
+
+- Vite 对 `new URL()` 的静态资源路径转换和模板 / CSS 中的路径转换一样，**发生在编译期**；
+- 只有当第一个参数是**编译期可确定的字面量字符串**（如 `'./assets/icon.png'`、`'@/assets/icon.png'`）时，才能被识别为静态资源并参与打包；
+- 一旦用到了变量或模板字符串拼接，编译器就无法在构建阶段推断出确切文件名，因此不会做静态资源转换，只按普通 URL 解析处理。
+
+> 总结：`new URL()` 要参与静态资源转换，**path 参数必须是编译期字面量**；变量或动态表达式都不会生效。
 
 ### 相对路径
 ```ts
