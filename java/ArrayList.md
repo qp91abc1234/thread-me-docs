@@ -1,0 +1,132 @@
+ArrayList 就是"可变长数组"，查询快、增删慢（中间位置），线程不安全，日常开发中最常用的集合
+
+## 创建
+
+```java
+// 1. 无参构造（初始容量10，但还没分配空间，第一次 add 时才真正分配）
+List<String> list1 = new ArrayList<>();
+
+// 2. 指定初始容量（避免频繁扩容，提升性能）
+List<String> list2 = new ArrayList<>(20);
+
+// 3. 从其他集合创建
+//    Arrays.asList 返回阉割版 List，一般用于创建 ArrayList
+List<String> list3 = new ArrayList<>(Arrays.asList("A", "B", "C"));
+```
+
+## 增
+
+```java
+// 末尾添加
+list.add("Apple");           // [Apple]
+list.add("Banana");          // [Apple, Banana]
+
+// 指定位置插入（后面元素后移）
+list.add(1, "Orange");       // [Apple, Orange, Banana]
+
+// 添加整个集合
+List<String> other = Arrays.asList("Grape", "Mango");
+list.addAll(other);          // [Apple, Orange, Banana, Grape, Mango]
+
+// 指定位置添加集合
+list.addAll(2, other);
+```
+
+## 删
+
+```java
+// 按索引删除（返回被删元素）
+String removed = list.remove(1);
+
+// 按对象删除（删除第一个匹配的，返回是否删除成功）
+boolean success = list.remove("Apple");
+
+// 批量删除（删除集合中的所有元素）
+list.removeAll(Arrays.asList("Apple", "Banana"));
+
+// 保留指定集合中的元素（交集）
+list.retainAll(Arrays.asList("Apple", "Cherry"));
+
+// 清空所有
+list.clear();
+
+// 通过迭代器遍历删除
+Iterator<String> it = list.iterator();
+while (it.hasNext()) {
+    String s = it.next();
+    if (s.equals("B")) {
+        it.remove();  // 安全删除
+    }
+}
+```
+
+## 改
+
+```java
+list.set(1, "Cherry");
+```
+
+## 查
+
+```java
+String fruit = list.get(0);        // "Apple"
+int index = list.indexOf("Banana"); // 1（第一个出现的位置）
+int lastIndex = list.lastIndexOf("Apple"); // 0
+
+// 获取子列表（视图，原列表改变会影响子列表）
+List<String> sub = list.subList(0, 2); // [Apple, Banana]
+List<String> sub = new ArrayList<>(list.subList(0, 2)); // 将子列表变为独立副本
+```
+
+## 遍历
+
+```java
+List<String> list = Arrays.asList("A", "B", "C");
+
+// 1. 普通 for（需要索引时用）
+for (int i = 0; i < list.size(); i++) {
+    System.out.println(list.get(i));
+}
+
+// 2. 增强 for（推荐，只读遍历）
+for (String s : list) {
+    System.out.println(s);
+}
+
+// 3. 迭代器（需要边遍历边删除时用）
+Iterator<String> it = list.iterator();
+while (it.hasNext()) {
+    String s = it.next();
+    if (s.equals("B")) {
+        it.remove();  // 安全删除
+    }
+}
+
+// 4. forEach + Lambda（Java 8）
+list.forEach(s -> System.out.println(s));
+
+// 5. 流式遍历
+list.stream().filter(s -> s.startsWith("A")).forEach(System.out::println);
+```
+
+## 其他
+
+```java
+int size = list.size();           // 元素个数（不是容量）
+boolean isEmpty = list.isEmpty(); // 是否为空
+boolean contains = list.contains("Apple"); // 是否包含
+Object[] arr = list.toArray();     // 转成 Object 数组
+String[] strArr = list.toArray(new String[0]); // 转成指定类型数组
+```
+
+## 扩容步骤
+
+扩容步骤：
+
+1. 检查是否需要扩容
+2. 计算新容量（1.5 倍）
+3. 创建新数组（新容量）
+4. 用 System.arraycopy() 复制旧元素
+5. 丢弃旧数组
+
+性能建议： 如果预知元素数量，用 new ArrayList<>(initialCapacity) 避免频繁扩容。

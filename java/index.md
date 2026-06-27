@@ -1,0 +1,211 @@
+## 类型转换
+
+```
+// 数值转字符串
+String.valueOf(num)
+
+// 基础类型装箱
+String.valueOf("123")
+
+// 字符串转数值
+Integer.parseInt(str)
+Long.parseLong(str)
+```
+
+## 相等比较
+
+值比较和 null 比较用 `==`
+
+```java
+if (obj == null) { }
+if (obj != null) { }
+
+// ⭐ 可选：使用 Objects.isNull（代码检查工具可能推荐）
+if (Objects.isNull(obj)) { }
+if (Objects.nonNull(obj)) { }
+```
+
+引用类型比较用 equals
+
+引用类型的值保存的是对象的地址，无法用 `==` 比较
+
+每个对象类型（类）都有自己的 equals 方法实现，因为 equals 是 Object 类的方法，所有类都继承或重写它
+
+```java
+String a = "abc";
+String b = "abc";
+a.equals(b)
+"abc".equals(b);
+"abc".equals("abc");
+
+// ❌ 错误：123 装箱后是 Integer
+String str = "123";
+str.equals(123);
+
+// ❌ 错误：空指针异常
+String str = null;
+str.equals("hello");
+```
+
+由于 null 安全，引用类型比较用 Objects.equals 比较普遍
+
+```java
+Objects.equals()
+
+// 简易实现
+public static boolean equals(Object a, Object b) {
+    return (a == b) || (a != null && a.equals(b));
+}
+```
+
+数组作为引用类型没有重写 equals，而是使用 Object 的默认实现，比较的还是地址，所以数组比较要使用 Arrays.equals
+
+```java
+int[] arr1 = {1, 2, 3};
+int[] arr2 = {1, 2, 3};
+arr1.equals(arr2);  // false - 用的是 Object.equals()，比较地址
+
+Arrays.equals(arr1, arr2) // true - 逐个元素比对
+```
+
+## 现代 switch
+
+```java
+int a = 10;
+int b = 2;
+int val = switch (op) {
+    case "+" -> a + b;
+    case "-" -> a - b;
+    case "*" -> a * b;
+    case "/" -> {
+        if (b == 0) {
+            yield 0;  // 用 yield 返回
+        }
+        yield a / b;
+    }
+    default -> 0;
+};
+```
+
+## 方法
+
+### 重载 vs 重写
+
+> 重载：同类同名，参数有别，其他不管
+> 重写：子类父类，签名全同，权限只宽不严
+
+### 可变参数
+
+本质是数组，一个方法只能有一个可变参数，可变参数必须放最后
+
+```java
+public static void test(int... nums) {
+    System.out.println(nums.length);
+}
+```
+
+## 数组
+
+长度固定，创建后不能改变
+
+```java
+int[] arr = {10, 20, 30};
+int[] arr = new int[5];
+
+System.out.println(arr.length);
+```
+
+二维数组
+
+```java
+int[][] arr = {
+    {1, 2, 3},
+    {4, 5, 6}
+};
+int[][] arr = new int[2][3];
+```
+
+数组遍历
+
+```java
+for (int num : arr) {
+    System.out.println(num);
+}
+```
+
+## final
+
+修饰变量：变量是常量，类似 js 中的 const
+
+修饰方法：该方法在子类不能 override
+
+修饰类：该类彻底禁止继承
+
+```java
+// 不允许被继承，不允许创建，只能用静态函数，当工具类使用
+public final class Utils {
+    private Utils() {
+    }
+}
+```
+
+## 代码块
+
+### static 代码块
+
+static 代码块在第一次主动使用该类时执行，而且是只执行一次
+
+```java
+public class Test {
+    static {
+        System.out.println("static代码块");
+    }
+}
+```
+
+以下情况会触发 static 代码块执行：
+
+```java
+// 1. new 创建实例
+MyClass obj = new MyClass();  // ✅ 触发
+
+// 2. 访问静态变量（非编译时常量）
+System.out.println(MyClass.name);  // ✅ 触发
+
+// 3. 调用静态方法
+MyClass.hello();  // ✅ 触发
+
+// 4. 反射
+Class.forName("MyClass");  // ✅ 触发
+
+// 5. 子类初始化时，父类先初始化
+class Child extends MyClass {}
+new Child();  // ✅ 先触发父类 MyClass 的 static 代码块
+```
+
+### 构造代码块
+
+提取所有构造方法的公共代码，每次创建对象时执行，执行顺序是：
+
+1. 父类构造函数（如果有继承）
+2. 构造代码块（按定义顺序执行）
+3. 构造函数本体
+
+```java
+public class Person {
+    private String name;
+    private int age;
+
+    // 实例初始化代码块（构造代码块）
+    {
+        System.out.println("执行实例初始化块");
+        // 所有构造函数的公共代码放这里
+        age = 18;  // 默认年龄
+    }
+
+    public Person() {
+        System.out.println("执行无参构造");
+        name = "匿名";
+    }
+}
+```

@@ -34,6 +34,7 @@ request：支持 token 续签的 axios 请求库封装
     缓存 promise 中的 resolve & reject
     续签结束后再对缓存的 promise 进行 `resolve(instance(config!)` / `reject(error)`
 mitt：组件内自动清理监听器的事件总线
+    useEventBus 函数内有一个容器存储注册的事件
     通过 getCurrentScope 判断是否组件环境调用 useEventBus
     若组件环境调用 useEventBus
     注册 onScopeDispose 钩子
