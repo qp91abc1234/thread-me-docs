@@ -139,32 +139,12 @@ for (int i = 0; i < 2; i++) {
     s = s + i;
 }
 
-// 第1次循环 (i=0)
-StringBuilder sb1 = new StringBuilder();
-sb1.append("");    // 原来的 s
-sb1.append(0);     // i
-s = sb1.toString(); // 产生新String对象 "0"
-
-// 第2次循环 (i=1)
-StringBuilder sb2 = new StringBuilder();
-sb2.append("0");   // 原来的 s
-sb2.append(1);     // i
-s = sb2.toString(); // 产生新String对象 "01"
-```
-
-## StringUtils
-
-Spring 框架自带的工具类
-
-```java
-// 是否有文本
-StringUtils.hasText(null);      // false
-StringUtils.hasText("");        // false
-StringUtils.hasText("   ");     // false（纯空格）
-StringUtils.hasText(" Hello "); // true
-
-// 是否有长度
-StringUtils.hasLength(null);    // false
-StringUtils.hasLength("");      // false
-StringUtils.hasLength("   ");   // true（注意：纯空格算有长度）
+// 编译后的等效代码
+String s = "";
+for (int i = 0; i < 2; i++) {
+    StringBuilder sb = new StringBuilder();
+    sb.append(s);   // 追加当前 s 的值
+    sb.append(i);   // 追加整数 i（自动转为字符串）
+    s = sb.toString(); // 创建新的 String 对象
+}
 ```

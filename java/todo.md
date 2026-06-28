@@ -61,6 +61,7 @@
 
 ### 多线程
 
-volatile、ThreadLocal、CompletableFuture
+volatile：解决变量的可见性问题
+ThreadLocal、CompletableFuture
 
 ## todo
