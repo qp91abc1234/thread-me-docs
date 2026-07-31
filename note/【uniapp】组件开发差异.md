@@ -62,3 +62,27 @@ defineOptions({
   }
 }
 ```
+
+---
+
+## styleIsolation
+
+样式隔离：微信小程序原生默认为 `isolated`，uni-app 默认为 `apply-shared`。无法全局设置，需在页面/组件内单独配置。
+
+**组件内配置：**
+
+```ts
+defineOptions({
+  options: {
+    styleIsolation: 'apply-shared'
+  }
+})
+```
+
+| 模式 | 页面样式 | 组件样式 | 页面 DOM | 组件 DOM | 效果 |
+| --- | --- | --- | --- | --- | --- |
+| `isolated` | 带页面后缀 | 带组件后缀 | 带页面属性 | 带组件属性 | 完全隔离 |
+| `apply-shared` | 带页面后缀 + 一份无后缀副本 | 带组件后缀 | 带页面属性 | 带组件属性 | 页面样式可影响组件，组件样式不影响页面 |
+| `shared` | 带页面后缀 + 一份无后缀副本 | 带组件后缀 + 一份无后缀副本 | 带页面属性 | 带组件属性 | 双向互相影响 |
+
+> `scoped` 是 Vue3 的作用域样式，可在小程序样式隔离之上叠加。例如 `styleIsolation: shared` 时，用 `scoped` 可避免子组件样式影响父组件。
