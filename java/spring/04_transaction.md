@@ -76,6 +76,7 @@ public class OrderServiceProxy implements OrderService {
 - 方法需要通过 Spring 创建的代理对象被外部调用。
 - 操作的数据库需要支持事务。
 - 多个操作需要使用同一个事务管理器和数据源。
+- 新线程和 `@Async` 方法不会自动加入当前事务。
 
 ## 事务的回滚规则
 
