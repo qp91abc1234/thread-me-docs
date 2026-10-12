@@ -73,17 +73,21 @@ List<SysUser> users = lambdaQuery()
 WHERE last_login_at IS NOT NULL
 ```
 
+
+
 ### 3. 聚合函数与 `NULL`
 
 大多数聚合函数会忽略字段中的 `NULL`，但 `COUNT(*)` 统计的是记录行数，不会因为某个字段为 `NULL` 而忽略该行。
 
 假设存在以下数据：
 
-| id | username | age |
-| ---: | --- | ---: |
-| 1 | user_a | 20 |
-| 2 | user_b | 30 |
-| 3 | user_c | `NULL` |
+
+| id  | username | age    |
+| --- | -------- | ------ |
+| 1   | user_a   | 20     |
+| 2   | user_b   | 30     |
+| 3   | user_c   | `NULL` |
+
 
 执行：
 
@@ -100,14 +104,16 @@ FROM sys_user;
 
 结果为：
 
-| 聚合表达式 | 结果 | 说明 |
-| --- | ---: | --- |
-| `COUNT(*)` | 3 | 统计所有记录 |
-| `COUNT(age)` | 2 | 只统计 `age` 非 `NULL` 的记录 |
-| `SUM(age)` | 50 | 忽略 `NULL` 后求和 |
-| `AVG(age)` | 25 | 按 `(20 + 30) / 2` 计算，不会把 `NULL` 当成 0 |
-| `MAX(age)` | 30 | 忽略 `NULL` 后取最大值 |
-| `MIN(age)` | 20 | 忽略 `NULL` 后取最小值 |
+
+| 聚合表达式        | 结果  | 说明                                   |
+| ------------ | --- | ------------------------------------ |
+| `COUNT(*)`   | 3   | 统计所有记录                               |
+| `COUNT(age)` | 2   | 只统计 `age` 非 `NULL` 的记录               |
+| `SUM(age)`   | 50  | 忽略 `NULL` 后求和                        |
+| `AVG(age)`   | 25  | 按 `(20 + 30) / 2` 计算，不会把 `NULL` 当成 0 |
+| `MAX(age)`   | 30  | 忽略 `NULL` 后取最大值                      |
+| `MIN(age)`   | 20  | 忽略 `NULL` 后取最小值                      |
+
 
 如果参与计算的字段值全部为 `NULL`，结果也需要特别注意：
 
@@ -115,6 +121,8 @@ FROM sys_user;
 COUNT(字段)          → 0
 SUM / AVG / MAX / MIN → NULL
 ```
+
+
 
 ### 4. `NULL` 的比较与 `UNKNOWN`
 
@@ -128,14 +136,16 @@ UNKNOWN
 
 任何普通比较只要涉及 `NULL`，结果通常都是 `UNKNOWN`：
 
-| 表达式 | 结果 |
-| --- | --- |
-| `1 = 1` | `TRUE` |
-| `1 = 2` | `FALSE` |
-| `1 = NULL` | `UNKNOWN` |
-| `NULL = NULL` | `UNKNOWN` |
-| `NULL <> 1` | `UNKNOWN` |
+
+| 表达式            | 结果        |
+| -------------- | --------- |
+| `1 = 1`        | `TRUE`    |
+| `1 = 2`        | `FALSE`   |
+| `1 = NULL`     | `UNKNOWN` |
+| `NULL = NULL`  | `UNKNOWN` |
+| `NULL <> 1`    | `UNKNOWN` |
 | `NULL <> NULL` | `UNKNOWN` |
+
 
 `WHERE` 只保留判断结果为 `TRUE` 的记录，结果为 `FALSE` 或 `UNKNOWN` 的记录都会被过滤。
 
@@ -145,11 +155,13 @@ UNKNOWN
 
 假设表中存在三条记录：
 
+
 | username | status |
-| --- | ---: |
-| user_a | `0` |
-| user_b | `1` |
-| user_c | `NULL` |
+| -------- | ------ |
+| user_a   | `0`    |
+| user_b   | `1`    |
+| user_c   | `NULL` |
+
 
 执行：
 
@@ -190,11 +202,13 @@ WHERE status <> 0
 
 例如，下面三条记录的创建时间完全相同：
 
-| id | username | created_at |
-| ---: | --- | --- |
-| 101 | user_a | 2026-10-12 10:00:00 |
-| 102 | user_b | 2026-10-12 10:00:00 |
-| 103 | user_c | 2026-10-12 10:00:00 |
+
+| id  | username | created_at          |
+| --- | -------- | ------------------- |
+| 101 | user_a   | 2026-10-12 10:00:00 |
+| 102 | user_b   | 2026-10-12 10:00:00 |
+| 103 | user_c   | 2026-10-12 10:00:00 |
+
 
 如果只按照创建时间排序：
 
@@ -230,3 +244,159 @@ List<SysUser> users = lambdaQuery()
         .orderByDesc(SysUser::getId)
         .list();
 ```
+
+
+
+## `LIMIT` 分页
+
+### 1. `LIMIT` 介绍
+
+`LIMIT` 用于限制查询结果返回的记录数量。
+
+查询前 20 条用户记录：
+
+```sql
+SELECT id, username, created_at
+FROM sys_user
+ORDER BY id ASC
+LIMIT 20;
+```
+
+分页时常用的语法是：
+
+```sql
+LIMIT offset, size
+```
+
+- `offset`：跳过多少条记录。
+- `size`：最多返回多少条记录。
+
+例如：
+
+```sql
+-- 第一页：跳过 0 条，返回 20 条
+LIMIT 0, 20;
+
+-- 第二页：跳过 20 条，返回 20 条
+LIMIT 20, 20;
+```
+
+假设页码 `pageNo` 从 1 开始，每页数量为 `pageSize`，偏移量计算公式为：
+
+```text
+offset = (pageNo - 1) × pageSize
+```
+
+### 2. 分页必须要有排序
+
+不推荐直接分页而不指定顺序：
+
+```sql
+SELECT id, username
+FROM sys_user
+LIMIT 0, 20;
+```
+
+没有 `ORDER BY` 时，MySQL 不保证记录的返回顺序。执行计划、索引选择或数据变化都可能改变结果顺序，导致翻页时出现记录重复或遗漏。
+
+应该先形成稳定顺序，再截取当前页：
+
+```sql
+SELECT id, username, created_at
+FROM sys_user
+ORDER BY created_at DESC, id DESC
+LIMIT 0, 20;
+```
+
+其中 `created_at` 可能重复，因此追加唯一的主键 `id` 作为最终排序条件。
+
+```text
+分页查询 = 稳定排序 + LIMIT
+```
+
+### 3. MyBatis-Plus 分页
+
+MyBatis-Plus 使用 `Page` 对象描述当前页码和每页数量：
+
+```java
+Page<SysUser> pageRequest = new Page<>(pageNo, pageSize);
+
+LambdaQueryWrapper<SysUser> wrapper =
+        Wrappers.<SysUser>lambdaQuery()
+                .eq(
+                        status != null,
+                        SysUser::getStatus,
+                        status
+                )
+                .orderByDesc(SysUser::getCreatedAt)
+                .orderByDesc(SysUser::getId);
+
+IPage<SysUser> result = page(pageRequest, wrapper);
+```
+
+MyBatis-Plus 的页码通常从 `1` 开始，它会根据页码和每页数量计算 SQL 中的偏移量。
+
+项目需要正确配置 MyBatis-Plus 分页插件，分页 SQL 才会被正确改写。
+
+### 4. 分页结果包含什么
+
+`IPage<SysUser>` 中常用的数据包括：
+
+```java
+// 当前页的数据
+List<SysUser> records = result.getRecords();
+
+// 满足查询条件的总记录数
+long total = result.getTotal();
+
+// 当前页码
+long current = result.getCurrent();
+
+// 每页数量
+long size = result.getSize();
+
+// 总页数
+long pages = result.getPages();
+```
+
+### 5. 数据量大、页码深时考虑游标分页
+
+下面的深分页 SQL 虽然语法正确：
+
+```sql
+SELECT id, username
+FROM sys_user
+ORDER BY id ASC
+LIMIT 100000, 20;
+```
+
+但 MySQL 仍然需要找到并跳过前面的 100000 条记录。偏移量越大，查询通常越慢。
+
+如果业务不要求任意跳转页码，可以记录上一页最后一条数据的 ID：
+
+```sql
+SELECT id, username
+FROM sys_user
+WHERE id > ?
+ORDER BY id ASC
+LIMIT 20;
+```
+
+MyBatis-Plus：
+
+```java
+List<SysUser> users = lambdaQuery()
+        .gt(lastId != null, SysUser::getId, lastId)
+        .orderByAsc(SysUser::getId)
+        .last("LIMIT 20")
+        .list();
+```
+
+这里的分页数量必须由后端控制，不能将未经校验的前端参数直接拼接到 `last()` 中。
+
+```text
+普通后台分页：Page + offset 分页；
+数据量大、页码深：考虑游标分页；
+游标分页性能更稳定，但不适合任意跳转到指定页码。
+```
+
