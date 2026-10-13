@@ -269,3 +269,106 @@ NULL = 1
 
 结果为 `UNKNOWN`，该结果行会被过滤。这样就无法保留没有启用角色的用户，查询效果会接近 `INNER JOIN`。
 
+## MyBatis 查询用户角色
+
+MyBatis-Plus 的通用 Service 和 Wrapper 更适合单表查询。用户、用户角色关系和角色的联表查询，可以在 Mapper XML 中直接编写 `INNER JOIN`，再由 Service 调用。
+
+### 1. 定义返回对象
+
+联表结果同时包含用户和角色字段，因此使用 VO 接收：
+
+```java
+public class UserRoleVO {
+
+    private Long userId;
+    private String username;
+    private Long roleId;
+    private String roleName;
+}
+```
+
+### 2. 定义 Mapper 方法
+
+```java
+public interface UserMapper extends BaseMapper<SysUser> {
+
+    List<UserRoleVO> selectRolesByUserId(
+            @Param("userId") Long userId
+    );
+}
+```
+
+Mapper 方法返回 `List<UserRoleVO>`，表示一名用户可能拥有多个角色。
+
+### 3. 编写 Mapper XML
+
+```xml
+<mapper namespace="com.example.rbac.mapper.UserMapper">
+
+    <select id="selectRolesByUserId"
+            resultType="com.example.rbac.vo.UserRoleVO">
+        SELECT
+            u.id AS userId,
+            u.username,
+            r.id AS roleId,
+            r.role_name AS roleName
+        FROM sys_user u
+        INNER JOIN sys_user_role ur
+            ON ur.user_id = u.id
+        INNER JOIN sys_role r
+            ON r.id = ur.role_id
+        WHERE u.id = #{userId}
+        ORDER BY r.id ASC
+    </select>
+
+</mapper>
+```
+
+对应的连接关系是：
+
+```text
+sys_user.id
+→ sys_user_role.user_id
+
+sys_user_role.role_id
+→ sys_role.id
+```
+
+SQL 中使用别名，让返回列名与 VO 属性名对应：
+
+```text
+u.id        AS userId   → UserRoleVO.userId
+u.username              → UserRoleVO.username
+r.id        AS roleId   → UserRoleVO.roleId
+r.role_name AS roleName → UserRoleVO.roleName
+```
+
+`resultType` 表示每一行映射成一个 `UserRoleVO`；Mapper 方法中的 `List<UserRoleVO>` 用来接收多行结果。
+
+### 4. 在 Service 中调用
+
+```java
+@Service
+public class UserServiceImpl
+        extends ServiceImpl<UserMapper, SysUser>
+        implements UserService {
+
+    @Override
+    public List<UserRoleVO> getUserRoles(Long userId) {
+        return baseMapper.selectRolesByUserId(userId);
+    }
+}
+```
+
+调用过程：
+
+```text
+Controller
+→ UserService
+→ UserMapper
+→ Mapper XML
+→ MySQL
+```
+
+因为使用的是 `INNER JOIN`，没有角色的用户不会产生查询结果。如果业务要求没有角色的用户也必须返回，应改用 `LEFT JOIN`。
+
