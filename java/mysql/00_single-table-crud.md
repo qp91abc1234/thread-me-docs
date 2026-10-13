@@ -28,6 +28,22 @@ FROM
 8. `ORDER BY`：对结果排序。
 9. `LIMIT`：截取最终需要返回的数据。
 
+## MyBatis-Plus 分层使用原则
+
+```text
+简单单表 CRUD
+→ 优先使用 Service 通用方法
+
+简单动态条件
+→ 使用 Service 的 lambdaQuery / lambdaUpdate
+
+多表、聚合、复杂 SQL
+→ 在 Mapper 中定义 SQL，由 Service 调用
+
+Controller
+→ 通常只调用 Service，不直接调用 Mapper
+```
+
 ## `NULL` 的正确判断
 
 ### 1. 介绍 `NULL`
@@ -399,4 +415,128 @@ List<SysUser> users = lambdaQuery()
 数据量大、页码深：考虑游标分页；
 游标分页性能更稳定，但不适合任意跳转到指定页码。
 ```
+
+## MyBatis-Plus 逻辑删除
+
+### 1. `@TableLogic`：删除改标记、查询自动过滤、更新自动过滤
+
+实体的逻辑删除字段可以使用 `@TableLogic` 标记：
+
+```java
+@TableLogic
+private Integer deleted;
+```
+
+通常约定：
+
+```text
+deleted = 0：未删除
+deleted = 1：已删除
+```
+
+配置逻辑删除后，MyBatis-Plus 提供的通用方法会自动处理逻辑删除条件。
+
+#### 删除改为标记
+
+调用：
+
+```java
+userService.removeById(userId);
+```
+
+实际执行的 SQL 类似于：
+
+```sql
+UPDATE sys_user
+SET deleted = 1
+WHERE id = ?
+  AND deleted = 0;
+```
+
+数据没有被物理移除，只是被标记为已删除。
+
+#### 查询自动过滤
+
+调用：
+
+```java
+List<SysUser> users = userService.lambdaQuery()
+        .eq(SysUser::getStatus, 1)
+        .list();
+```
+
+生成的 SQL 类似于：
+
+```sql
+SELECT *
+FROM sys_user
+WHERE status = 1
+  AND deleted = 0;
+```
+
+通过 MyBatis-Plus 通用方法查询时，已逻辑删除的数据会被自动过滤。
+
+#### 更新自动过滤
+
+调用：
+
+```java
+boolean success = userService.lambdaUpdate()
+        .eq(SysUser::getId, userId)
+        .set(SysUser::getStatus, 0)
+        .update();
+```
+
+生成的 SQL 类似于：
+
+```sql
+UPDATE sys_user
+SET status = 0
+WHERE id = ?
+  AND deleted = 0;
+```
+
+已经逻辑删除的数据不会被 MyBatis-Plus 的普通更新方法再次更新。
+
+可以将 `@TableLogic` 的核心行为记成：
+
+```text
+删除：DELETE 改为 UPDATE 删除标记；
+查询：自动追加未删除条件；
+更新：自动追加未删除条件。
+```
+
+### 2. 自定义 SQL 必须关注逻辑删除条件
+
+`@TableLogic` 主要作用于 MyBatis-Plus 生成的通用 SQL。自己编写的 Mapper XML 或注解 SQL，需要主动添加逻辑删除条件。
+
+例如：
+
+```xml
+<select id="selectUserPermissions"
+        resultType="com.example.rbac.vo.UserPermissionVO">
+    SELECT
+        u.id,
+        u.username,
+        p.permission_code
+    FROM sys_user u
+    JOIN sys_user_role ur
+        ON ur.user_id = u.id
+    JOIN sys_role_permission rp
+        ON rp.role_id = ur.role_id
+    JOIN sys_permission p
+        ON p.id = rp.permission_id
+    WHERE u.id = #{userId}
+      AND u.deleted = 0
+      AND p.deleted = 0
+</select>
+```
+
+如果遗漏：
+
+```sql
+AND u.deleted = 0
+```
+
+自定义 SQL 就可能重新查询出已经逻辑删除的用户。
 
